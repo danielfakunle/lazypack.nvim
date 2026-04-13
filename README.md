@@ -16,7 +16,7 @@ close to native `vim.pack.add`.
 ## Usage
 
 ```lua
--- in your init.lua
+-- in your init.lua file
 vim.pack.add({ { src = 'https://github.com/danielfakunle/lazypack' } })
 
 require('lazypack').add({
