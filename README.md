@@ -17,7 +17,7 @@ close to native `vim.pack.add`.
 
 ```lua
 -- in your init.lua file
-vim.pack.add({ { src = 'https://github.com/danielfakunle/lazypack' } })
+vim.pack.add({ { src = 'https://github.com/danielfakunle/lazypack.nvim' } })
 
 require('lazypack').add({
   {
@@ -68,17 +68,6 @@ Table legend:
 | `keys`         | ❌          | Not currently handled by LazyPack.                                                |
 | `build`        | ➖          | Not currently implemented.                                                        |
 | `lazy`         | ❌          | Not modeled; lazy behavior is defined by `event`/`cmd` usage.                     |
-
-## Tests
-
-Run all tests:
-
-```sh
-./scripts/test.sh
-```
-
-The script bootstraps `plenary.nvim` into `.deps/plenary.nvim` and executes
-`tests/lazypack_spec.lua` via Plenary's busted harness.
 
 ## Disclaimer
 

@@ -3,5 +3,3 @@ local plenary_path = root .. '/.deps/plenary.nvim'
 
 vim.opt.rtp:prepend(root)
 vim.opt.rtp:prepend(plenary_path)
-
-vim.cmd.packadd('plenary.nvim')

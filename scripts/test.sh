@@ -11,6 +11,6 @@ if [ ! -d "$PLENARY_DIR/.git" ]; then
   git clone --depth=1 https://github.com/nvim-lua/plenary.nvim.git "$PLENARY_DIR"
 fi
 
-nvim --headless -u "$ROOT_DIR/tests/minimal_init.lua" \
+NVIM_APPNAME=lazypack-tests nvim --headless -u "$ROOT_DIR/tests/minimal_init.lua" \
   -c "PlenaryBustedDirectory $ROOT_DIR/tests { minimal_init = '$ROOT_DIR/tests/minimal_init.lua' }" \
   -c "qa"

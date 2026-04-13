@@ -1,0 +1,12 @@
+{
+  "name": "lazypack",
+  "private": true,
+  "scripts": {
+    "test": "./scripts/test.sh",
+    "commitlint": "./scripts/commitlint.sh"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1"
+  }
+}
