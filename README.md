@@ -19,7 +19,19 @@ close to native `vim.pack.add`.
 -- in your init.lua file
 vim.pack.add({ { src = 'https://github.com/danielfakunle/lazypack.nvim' } })
 
-require('lazypack').add({
+_G.LazyPack = function(spec)
+  require('lazypack').add(spec)
+end
+
+vim.keymap.set('n', '<leader>pc', function()
+  require('lazypack').pack_clean()
+end, { desc = 'Clean packages' })
+
+vim.keymap.set('n', '<leader>pu', function()
+  require('lazypack').pack_update()
+end, { desc = 'Update packages' })
+
+LazyPack({
   {
     src = 'folke/trouble.nvim',
     name = 'trouble',
