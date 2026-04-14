@@ -100,9 +100,12 @@ local function make_vim_mock()
     notify = function(msg, level)
       table.insert(state.notify_calls, { msg = msg, level = level })
     end,
-    system = function(command, opts)
+    system = function(command, opts, on_exit)
       local call = { command = command, opts = opts }
       table.insert(state.system_calls, call)
+      if type(on_exit) == 'function' then
+        on_exit({ code = 0, stderr = '' })
+      end
       return {
         wait = function()
           table.insert(state.system_wait_calls, call)
@@ -592,7 +595,7 @@ describe('lazypack.add', function()
     assert.equals(vim.log.levels.WARN, __state.notify_calls[1].level)
   end)
 
-  it('runs string build synchronously on install and update', function()
+  it('runs string build asynchronously on install and update', function()
     local lazypack = load_module()
     lazypack.add({ {
       src = 'foo/bar',
@@ -608,10 +611,9 @@ describe('lazypack.add', function()
     assert.equals(2, #__state.system_calls)
     assert.same({ vim.o.shell, vim.o.shellcmdflag, 'make' }, __state.system_calls[1].command)
     assert.equals('/tmp/foo', __state.system_calls[1].opts.cwd)
-    assert.equals(2, #__state.system_wait_calls)
   end)
 
-  it('runs list build synchronously in order', function()
+  it('runs list build asynchronously in order', function()
     local lazypack = load_module()
     local seen
     lazypack.add({ {
@@ -651,7 +653,6 @@ describe('lazypack.add', function()
     assert.equals(1, #__state.system_calls)
     assert.same({ vim.o.shell, vim.o.shellcmdflag, 'make arg' }, __state.system_calls[1].command)
     assert.equals('/tmp/foo', __state.system_calls[1].opts.cwd)
-    assert.equals(1, #__state.system_wait_calls)
     assert.equals('ok', seen)
   end)
 
@@ -715,6 +716,27 @@ describe('lazypack.add', function()
 
     assert.is_table(seen)
     assert.same(data, seen.data)
+  end)
+
+  it('resumes yielded build function on next tick', function()
+    local lazypack = load_module()
+    local calls = {}
+    local yielded_build = function()
+      table.insert(calls, 'start')
+      coroutine.yield('progress')
+      table.insert(calls, 'done')
+    end
+    lazypack.add({ {
+      src = 'foo/bar',
+      name = 'plugin.mod',
+      build = yielded_build,
+    } })
+
+    run_autocmds('PackChanged', {
+      data = { kind = 'install', spec = { name = 'plugin.mod', data = { build = yielded_build } }, path = '/tmp/foo' },
+    })
+
+    assert.same({ 'start', 'done' }, calls)
   end)
 
   it('does not run build on delete', function()

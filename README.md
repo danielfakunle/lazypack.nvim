@@ -83,16 +83,15 @@ The `build` property can be one of the following:
 
 - `fun(ev)` to run custom Lua build logic
 - `":Command"` to run a Neovim command
-- any other string to run as a shell command (for example, `"make"`)
+- any other string to run as a shell command (for example, `"make arg"`)
 - a list of any of the above to run multiple build steps in order
+- function build steps run in a coroutine and can use `coroutine.yield()`
+  to report progress and continue on the next tick
 
 When a build step is a `:Command`, LazyPack will `packadd` the plugin first if
 it is not active yet.
 
-Build steps run synchronously.
-
-> [!IMPORTANT]
-> Asynchronous builds are not supported.
+Build steps run asynchronously and in order.
 
 ## User Events
 

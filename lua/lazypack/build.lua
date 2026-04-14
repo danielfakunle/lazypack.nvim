@@ -6,12 +6,20 @@ local warned_missing_name = false
 --- @param command string|string[]
 --- @param cwd? string
 --- @param name string
-local function run_system_sync(command, cwd, name)
-  local result = vim.system(command, { cwd = cwd }):wait()
-  if result and result.code and result.code ~= 0 then
-    local stderr = result.stderr and result.stderr:gsub('%s+$', '') or ''
-    local suffix = stderr ~= '' and (': ' .. stderr) or ''
-    vim.notify(('Build failed for `%s` (exit %d)%s'):format(name, result.code, suffix), vim.log.levels.WARN)
+--- @param done fun()
+local function run_system_async(command, cwd, name, done)
+  local ok, err = pcall(vim.system, command, { cwd = cwd }, function(result)
+    if result and result.code and result.code ~= 0 then
+      local stderr = result.stderr and result.stderr:gsub('%s+$', '') or ''
+      local suffix = stderr ~= '' and (': ' .. stderr) or ''
+      vim.notify(('Build failed for `%s` (exit %d)%s'):format(name, result.code, suffix), vim.log.levels.WARN)
+    end
+    done()
+  end)
+
+  if not ok then
+    vim.notify(('Build command failed for `%s`: %s'):format(name, err), vim.log.levels.WARN)
+    done()
   end
 end
 
@@ -24,12 +32,30 @@ end
 --- @param ev table
 --- @param name string
 --- @param step any
-local function run_build_step(ev, name, step)
+--- @param done fun()
+local function run_build_step(ev, name, step, done)
   if type(step) == 'function' then
-    local ok, err = pcall(step, ev)
-    if not ok then
-      vim.notify(('Build function failed for `%s`: %s'):format(name, err), vim.log.levels.WARN)
+    local co = coroutine.create(step)
+
+    local function resume_step(...)
+      local ok, err = coroutine.resume(co, ...)
+      if not ok then
+        vim.notify(('Build function failed for `%s`: %s'):format(name, err), vim.log.levels.WARN)
+        done()
+        return
+      end
+
+      if coroutine.status(co) == 'dead' then
+        done()
+        return
+      end
+
+      vim.schedule(function()
+        resume_step()
+      end)
     end
+
+    resume_step(ev)
     return
   end
 
@@ -44,10 +70,11 @@ local function run_build_step(ev, name, step)
       if not ok then
         vim.notify(('Build command failed for `%s`: %s'):format(name, err), vim.log.levels.WARN)
       end
+      done()
       return
     end
 
-    run_system_sync({ vim.o.shell, vim.o.shellcmdflag, step }, ev.data and ev.data.path or nil, name)
+    run_system_async({ vim.o.shell, vim.o.shellcmdflag, step }, ev.data and ev.data.path or nil, name, done)
     return
   end
 
@@ -55,6 +82,7 @@ local function run_build_step(ev, name, step)
     ('Skipping build step for `%s`: expected function or string'):format(name),
     vim.log.levels.WARN
   )
+  done()
 end
 
 --- @param build any
@@ -84,9 +112,19 @@ local function run_build(ev, name, build)
     return
   end
 
-  for _, step in ipairs(steps) do
-    run_build_step(ev, name, step)
+  local index = 1
+
+  local function run_next_step()
+    local step = steps[index]
+    index = index + 1
+    if step == nil then
+      return
+    end
+
+    run_build_step(ev, name, step, run_next_step)
   end
+
+  run_next_step()
 end
 
 --- @param augroup integer
