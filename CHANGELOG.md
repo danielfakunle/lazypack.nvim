@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.4](https://github.com/danielfakunle/lazypack.nvim/compare/lazypack-v0.0.3...lazypack-v0.0.4) (2026-04-14)
+
+
+### Features
+
+* add build spec for synchronous builds ([8bae761](https://github.com/danielfakunle/lazypack.nvim/commit/8bae76199757e821815844641b04e6d0fdac5e39))
+* support async builds for build spec ([a166fed](https://github.com/danielfakunle/lazypack.nvim/commit/a166fedfea4b56e633bb769b64e1cdd424b040d9))
+
 ## [0.0.3](https://github.com/danielfakunle/lazypack.nvim/compare/lazypack-v0.0.2...lazypack-v0.0.3) (2026-04-14)
 
 
