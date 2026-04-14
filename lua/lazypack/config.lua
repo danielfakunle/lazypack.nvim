@@ -13,7 +13,7 @@ function M.is_enabled(plugin)
     local ok, result = pcall(enabled)
     if not ok then
       vim.notify(
-        ('Skipping plugin `%s`: enabled() failed: %s'):format(plugin.name or plugin.src or 'unknown plugin', result),
+        ('Skipping plugin `%s`: enabled() failed: %s'):format(plugin.name or 'unknown plugin', result),
         vim.log.levels.WARN
       )
       return false

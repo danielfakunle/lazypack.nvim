@@ -1,14 +1,15 @@
 local M = {}
+local warned_missing_name = false
 
 --- @param plugin table
 --- @return string?
-local function plugin_id(plugin)
+local function plugin_name(plugin)
   local spec = plugin and plugin.spec or nil
   if not spec then
     return nil
   end
 
-  return spec.name or spec.src
+  return spec.name
 end
 
 --- @param opts? { force?: boolean }
@@ -18,16 +19,19 @@ function M.clean(opts)
   local plugins = vim.pack.get()
 
   for _, plugin in ipairs(plugins) do
-    local id = plugin_id(plugin)
-    if id then
-      active[id] = plugin.active
+    local name = plugin_name(plugin)
+    if name then
+      active[name] = plugin.active
+    elseif not warned_missing_name then
+      warned_missing_name = true
+      vim.notify('Skipping plugin without `spec.name` in pack_clean()', vim.log.levels.WARN)
     end
   end
 
   for _, plugin in ipairs(plugins) do
-    local id = plugin_id(plugin)
-    if id and not active[id] then
-      table.insert(unused, id)
+    local name = plugin_name(plugin)
+    if name and not active[name] then
+      table.insert(unused, name)
     end
   end
 
