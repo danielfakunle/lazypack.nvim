@@ -49,6 +49,7 @@ LazyPack({
   {
     src = 'nvim-treesitter/nvim-treesitter',
     version = 'master',
+    build = ':TSUpdate',
     cmd = { 'TSInstall', 'TSUpdate' },
     config = function()
       require('nvim-treesitter.configs').setup({
@@ -62,18 +63,36 @@ LazyPack({
 
 ## Plugin Spec
 
-| Property | Type | Description |
-| -------- | ---- | ----------- |
-| `src` | `string` | Plugin source (`owner/repo` or full `https` URL) passed to `vim.pack.Spec.src`. |
-| `name` | `string?` | Optional plugin name passed to `vim.pack.Spec.name`. |
-| `version` | `string?` | Optional version/tag/branch/commit passed to `vim.pack.Spec.version`. |
-| `dependencies` | `string|string[]` | A list of dependency sources (`owner/repo` or full `https` URL). Each dependency is added with `vim.pack.add` before the main plugin spec. |
-| `init` | `fun()?` | Runs in the plugin `load` callback before lazy handlers are registered. |
-| `config` | `boolean? or fun()?` | `true` calls `require(name).setup(opts)`, or you can provide a custom config function. |
-| `opts` | `table? or fun():table` | Used when `config = true`; supports table or function returning table. |
-| `event` | `string|string[]` | Lazy-load on native autocmd events and lazy-style user events (`VeryLazy`, `LazyInstall`, `LazyUpdate`, `LazyClean`, and `*Pre`). |
-| `cmd` | `string|string[]` | Lazy-load on command execution with command forwarding after `packadd`. |
-| `enabled` | `boolean? or fun():boolean` | When `false` (or function returns `false`), the plugin is skipped and not added. |
+| Property       | Type                            | Description                                                                                                                                |
+| -------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src`          | `string`                        | Plugin source (`owner/repo` or full `https` URL) passed to `vim.pack.Spec.src`.                                                            |
+| `name`         | `string?`                       | Optional plugin name passed to `vim.pack.Spec.name`.                                                                                       |
+| `version`      | `string?`                       | Optional version/tag/branch/commit passed to `vim.pack.Spec.version`.                                                                      |
+| `dependencies` | `string \| string[]`            | A list of dependency sources (`owner/repo` or full `https` URL). Each dependency is added with `vim.pack.add` before the main plugin spec. |
+| `init`         | `fun()?`                        | Runs in the plugin `load` callback before lazy handlers are registered.                                                                    |
+| `config`       | `boolean? or fun()?`            | `true` calls `require(name).setup(opts)`, or you can provide a custom config function.                                                     |
+| `opts`         | `table? or fun():table`         | Used when `config = true`; supports table or function returning table.                                                                     |
+| `event`        | `string \| string[]`            | Lazy-load on native autocmd events and lazy-style user events (`VeryLazy`, `LazyInstall`, `LazyUpdate`, `LazyClean`, and `*Pre`).          |
+| `cmd`          | `string \| string[]`            | Lazy-load on command execution with command forwarding after `packadd`.                                                                    |
+| `enabled`      | `boolean? or fun():boolean`     | When `false` (or function returns `false`), the plugin is skipped and not added.                                                           |
+| `build`        | `string or string[] or fun(ev)` | Runs on install/update (`PackChanged` with `kind = "install" \| "update"`). See [Building](#building).                                     |
+
+## Building
+
+The `build` property can be one of the following:
+
+- `fun(ev)` to run custom Lua build logic
+- `":Command"` to run a Neovim command
+- any other string to run as a shell command (for example, `"make"`)
+- a list of any of the above to run multiple build steps in order
+
+When a build step is a `:Command`, LazyPack will `packadd` the plugin first if
+it is not active yet.
+
+Build steps run synchronously.
+
+> [!IMPORTANT]
+> Asynchronous builds are not supported.
 
 ## User Events
 

@@ -23,6 +23,8 @@ local function make_vim_mock()
     confirm_calls = {},
     confirm_result = 2,
     print_calls = {},
+    system_calls = {},
+    system_wait_calls = {},
   }
 
   local cmd = {}
@@ -98,6 +100,16 @@ local function make_vim_mock()
     notify = function(msg, level)
       table.insert(state.notify_calls, { msg = msg, level = level })
     end,
+    system = function(command, opts)
+      local call = { command = command, opts = opts }
+      table.insert(state.system_calls, call)
+      return {
+        wait = function()
+          table.insert(state.system_wait_calls, call)
+          return { code = 0, stderr = '' }
+        end,
+      }
+    end,
     schedule = function(fn)
       fn()
     end,
@@ -118,6 +130,7 @@ local function load_module()
   package.loaded['lazypack.events'] = nil
   package.loaded['lazypack.cmd'] = nil
   package.loaded['lazypack.config'] = nil
+  package.loaded['lazypack.build'] = nil
   package.loaded['lazypack.pack'] = nil
   package.loaded['lazypack.utils'] = nil
   return require('lazypack')
@@ -141,6 +154,14 @@ local function count_autocmds(event)
   return count
 end
 
+local function run_autocmds(event, ev)
+  for _, autocmd in ipairs(__state.autocmd_calls) do
+    if autocmd.event == event then
+      autocmd.opts.callback(ev)
+    end
+  end
+end
+
 local function gh(path)
   return 'https://github.com/' .. path
 end
@@ -162,6 +183,7 @@ describe('lazypack.add', function()
     package.loaded['lazypack.events'] = nil
     package.loaded['lazypack.cmd'] = nil
     package.loaded['lazypack.config'] = nil
+    package.loaded['lazypack.build'] = nil
     package.loaded['lazypack.pack'] = nil
     package.loaded['lazypack.utils'] = nil
     package.loaded['plugin.mod'] = nil
@@ -204,7 +226,21 @@ describe('lazypack.add', function()
     assert.equals('1.0.0', call.specs[1].version)
     assert.equals('BufReadPost', call.specs[1].data.event)
     assert.equals('MyCmd', call.specs[1].data.cmd)
+    assert.is_nil(call.specs[1].data.build)
     assert.is_function(call.opts.load)
+  end)
+
+  it('stores build in plugin data', function()
+    local lazypack = load_module()
+    lazypack.add({
+      {
+        src = 'foo/bar',
+        build = 'make',
+      },
+    })
+
+    local call = __state.pack_add_calls[1]
+    assert.equals('make', call.specs[1].data.build)
   end)
 
   it('adds string dependency before plugin spec', function()
@@ -534,7 +570,7 @@ describe('lazypack.add', function()
     lazypack.add({ 'foo/baz' })
 
     assert.equals(1, count_autocmds('PackChangedPre'))
-    assert.equals(1, count_autocmds('PackChanged'))
+    assert.equals(2, count_autocmds('PackChanged'))
     assert.equals(1, count_autocmds('VimEnter'))
   end)
 
@@ -554,6 +590,239 @@ describe('lazypack.add', function()
 
     assert.equals(1, #__state.notify_calls)
     assert.equals(vim.log.levels.WARN, __state.notify_calls[1].level)
+  end)
+
+  it('runs string build synchronously on install and update', function()
+    local lazypack = load_module()
+    lazypack.add({ {
+      src = 'foo/bar',
+      name = 'plugin.mod',
+      build = 'make',
+    } })
+
+    local data = { kind = 'install', spec = { name = 'plugin.mod', data = { build = 'make' } }, path = '/tmp/foo' }
+    run_autocmds('PackChanged', { data = data })
+    data.kind = 'update'
+    run_autocmds('PackChanged', { data = data })
+
+    assert.equals(2, #__state.system_calls)
+    assert.same({ vim.o.shell, vim.o.shellcmdflag, 'make' }, __state.system_calls[1].command)
+    assert.equals('/tmp/foo', __state.system_calls[1].opts.cwd)
+    assert.equals(2, #__state.system_wait_calls)
+  end)
+
+  it('runs list build synchronously in order', function()
+    local lazypack = load_module()
+    local seen
+    lazypack.add({ {
+      src = 'foo/bar',
+      name = 'plugin.mod',
+      build = {
+        ':TSUpdate',
+        'make arg',
+        function()
+          seen = 'ok'
+        end,
+      },
+    } })
+
+    run_autocmds('PackChanged', {
+      data = {
+        kind = 'install',
+        active = false,
+        spec = {
+          name = 'plugin.mod',
+          data = {
+            build = {
+              ':TSUpdate',
+              'make arg',
+              function()
+                seen = 'ok'
+              end,
+            },
+          },
+        },
+        path = '/tmp/foo',
+      },
+    })
+
+    assert.equals('plugin.mod', __state.packadd_calls[1])
+    assert.equals('TSUpdate', __state.cmd_calls[1])
+    assert.equals(1, #__state.system_calls)
+    assert.same({ vim.o.shell, vim.o.shellcmdflag, 'make arg' }, __state.system_calls[1].command)
+    assert.equals('/tmp/foo', __state.system_calls[1].opts.cwd)
+    assert.equals(1, #__state.system_wait_calls)
+    assert.equals('ok', seen)
+  end)
+
+  it('runs vim command build for colon-prefixed string', function()
+    local lazypack = load_module()
+    lazypack.add({ {
+      src = 'foo/bar',
+      name = 'plugin.mod',
+      build = ':TSUpdate',
+    } })
+
+    run_autocmds('PackChanged', {
+      data = { kind = 'install', active = false, spec = { name = 'plugin.mod', data = { build = ':TSUpdate' } }, path = '/tmp/foo' },
+    })
+
+    assert.equals('plugin.mod', __state.packadd_calls[1])
+    assert.equals('TSUpdate', __state.cmd_calls[1])
+    assert.equals(0, #__state.system_calls)
+  end)
+
+  it('does not packadd before colon build when already active', function()
+    local lazypack = load_module()
+    lazypack.add({ {
+      src = 'foo/bar',
+      name = 'plugin.mod',
+      build = ':TSUpdate',
+    } })
+
+    run_autocmds('PackChanged', {
+      data = { kind = 'update', active = true, spec = { name = 'plugin.mod', data = { build = ':TSUpdate' } }, path = '/tmp/foo' },
+    })
+
+    assert.equals(0, #__state.packadd_calls)
+    assert.equals('TSUpdate', __state.cmd_calls[1])
+  end)
+
+  it('runs build function with event data', function()
+    local lazypack = load_module()
+    local seen
+    lazypack.add({ {
+      src = 'foo/bar',
+      name = 'plugin.mod',
+      build = function(ev)
+        seen = ev
+      end,
+    } })
+
+    local data = {
+      kind = 'install',
+      spec = {
+        name = 'plugin.mod',
+        data = {
+          build = function(ev)
+            seen = ev
+          end,
+        },
+      },
+      path = '/tmp/foo',
+    }
+    run_autocmds('PackChanged', { data = data })
+
+    assert.is_table(seen)
+    assert.same(data, seen.data)
+  end)
+
+  it('does not run build on delete', function()
+    local lazypack = load_module()
+    lazypack.add({ {
+      src = 'foo/bar',
+      name = 'plugin.mod',
+      build = 'make',
+    } })
+
+    run_autocmds('PackChanged', {
+      data = { kind = 'delete', spec = { name = 'plugin.mod', data = { build = 'make' } }, path = '/tmp/foo' },
+    })
+
+    assert.equals(0, #__state.system_calls)
+  end)
+
+  it('runs build using spec.name and ignores src-only spec', function()
+    local lazypack = load_module()
+    lazypack.add({ {
+      src = 'foo/bar',
+      name = 'plugin.mod',
+      build = 'make',
+    } })
+
+    run_autocmds('PackChanged', {
+      data = { kind = 'install', spec = { src = gh('foo/bar'), data = { build = 'make' } }, path = '/tmp/foo' },
+    })
+
+    assert.equals(0, #__state.system_calls)
+    assert.equals(1, #__state.notify_calls)
+
+    run_autocmds('PackChanged', {
+      data = { kind = 'install', spec = { name = 'plugin.mod', data = { build = 'make' } }, path = '/tmp/foo' },
+    })
+
+    assert.equals(1, #__state.system_calls)
+  end)
+
+  it('warns only once when PackChanged event has no spec.name', function()
+    local lazypack = load_module()
+    lazypack.add({ {
+      src = 'foo/bar',
+      name = 'plugin.mod',
+      build = 'make',
+    } })
+
+    local ev = { data = { kind = 'install', spec = { src = gh('foo/bar'), data = { build = 'make' } }, path = '/tmp/foo' } }
+    run_autocmds('PackChanged', ev)
+    run_autocmds('PackChanged', ev)
+
+    assert.equals(1, #__state.notify_calls)
+  end)
+
+  it('warns and skips unsupported build type', function()
+    local lazypack = load_module()
+    lazypack.add({ {
+      src = 'foo/bar',
+      name = 'plugin.mod',
+      build = 42,
+    } })
+
+    run_autocmds('PackChanged', {
+      data = { kind = 'install', spec = { name = 'plugin.mod', data = { build = 42 } }, path = '/tmp/foo' },
+    })
+
+    assert.equals(1, #__state.notify_calls)
+    assert.equals(vim.log.levels.WARN, __state.notify_calls[1].level)
+    assert.equals(0, #__state.system_calls)
+  end)
+
+  it('warns and continues when build list has invalid step', function()
+    local lazypack = load_module()
+    lazypack.add({ {
+      src = 'foo/bar',
+      name = 'plugin.mod',
+      build = { ':TSUpdate', 123, 'make arg' },
+    } })
+
+    run_autocmds('PackChanged', {
+      data = {
+        kind = 'install',
+        active = false,
+        spec = { name = 'plugin.mod', data = { build = { ':TSUpdate', 123, 'make arg' } } },
+        path = '/tmp/foo',
+      },
+    })
+
+    assert.equals('TSUpdate', __state.cmd_calls[1])
+    assert.equals(1, #__state.system_calls)
+    assert.equals(1, #__state.notify_calls)
+    assert.equals(vim.log.levels.WARN, __state.notify_calls[1].level)
+  end)
+
+  it('does not run build for disabled plugins', function()
+    local lazypack = load_module()
+    lazypack.add({ {
+      src = 'foo/bar',
+      name = 'plugin.mod',
+      enabled = false,
+      build = 'make',
+    } })
+
+    run_autocmds('PackChanged', {
+      data = { kind = 'install', spec = { name = 'plugin.mod' }, path = '/tmp/foo' },
+    })
+
+    assert.equals(0, #__state.system_calls)
   end)
 
   it('exposes pack_update and calls vim.pack.update', function()
@@ -584,14 +853,27 @@ describe('lazypack.add', function()
     __state.pack_get_result = {
       { spec = { name = 'used' }, active = true },
       { spec = { name = 'unused' }, active = false },
-      { spec = { src = gh('owner/repo') }, active = false },
     }
 
     lazypack.pack_clean()
 
     assert.equals(1, #__state.confirm_calls)
     assert.equals(1, #__state.pack_del_calls)
-    assert.same({ 'unused', gh('owner/repo') }, __state.pack_del_calls[1])
+    assert.same({ 'unused' }, __state.pack_del_calls[1])
+  end)
+
+  it('warns once when pack_clean sees plugins without spec.name', function()
+    local lazypack = load_module()
+    __state.pack_get_result = {
+      { spec = { src = gh('owner/a') }, active = false },
+      { spec = { src = gh('owner/b') }, active = false },
+    }
+
+    lazypack.pack_clean()
+    lazypack.pack_clean()
+
+    assert.equals(1, #__state.notify_calls)
+    assert.equals(vim.log.levels.WARN, __state.notify_calls[1].level)
   end)
 
   it('pack_clean does not delete when confirmation is rejected', function()
