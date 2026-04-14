@@ -1,4 +1,5 @@
 local real_vim = vim
+local real_print = print
 
 local function make_vim_mock()
   local state = {
@@ -16,6 +17,12 @@ local function make_vim_mock()
     buf_commands = {},
     create_user_command_errors = {},
     packadd_hooks = {},
+    pack_get_result = {},
+    pack_del_calls = {},
+    pack_update_calls = {},
+    confirm_calls = {},
+    confirm_result = 2,
+    print_calls = {},
   }
 
   local cmd = {}
@@ -37,6 +44,15 @@ local function make_vim_mock()
     pack = {
       add = function(specs, opts)
         table.insert(state.pack_add_calls, { specs = specs, opts = opts })
+      end,
+      get = function()
+        return state.pack_get_result
+      end,
+      del = function(specs)
+        table.insert(state.pack_del_calls, specs)
+      end,
+      update = function()
+        table.insert(state.pack_update_calls, true)
       end,
     },
     cmd = cmd,
@@ -74,6 +90,10 @@ local function make_vim_mock()
         table.insert(state.getcompletion_calls, { line = line, kind = kind })
         return { 'ok' }
       end,
+      confirm = function(msg, choices, default)
+        table.insert(state.confirm_calls, { msg = msg, choices = choices, default = default })
+        return state.confirm_result
+      end,
     },
     notify = function(msg, level)
       table.insert(state.notify_calls, { msg = msg, level = level })
@@ -98,6 +118,7 @@ local function load_module()
   package.loaded['lazypack.events'] = nil
   package.loaded['lazypack.cmd'] = nil
   package.loaded['lazypack.config'] = nil
+  package.loaded['lazypack.pack'] = nil
   package.loaded['lazypack.utils'] = nil
   return require('lazypack')
 end
@@ -127,6 +148,13 @@ end
 describe('lazypack.add', function()
   before_each(function()
     _G.vim, _G.__state = make_vim_mock()
+    _G.print = function(...)
+      local parts = {}
+      for i = 1, select('#', ...) do
+        parts[i] = tostring(select(i, ...))
+      end
+      table.insert(__state.print_calls, table.concat(parts, '\t'))
+    end
   end)
 
   after_each(function()
@@ -134,9 +162,11 @@ describe('lazypack.add', function()
     package.loaded['lazypack.events'] = nil
     package.loaded['lazypack.cmd'] = nil
     package.loaded['lazypack.config'] = nil
+    package.loaded['lazypack.pack'] = nil
     package.loaded['lazypack.utils'] = nil
     package.loaded['plugin.mod'] = nil
     _G.vim = real_vim
+    _G.print = real_print
     _G.__state = nil
   end)
 
@@ -524,5 +554,56 @@ describe('lazypack.add', function()
 
     assert.equals(1, #__state.notify_calls)
     assert.equals(vim.log.levels.WARN, __state.notify_calls[1].level)
+  end)
+
+  it('exposes pack_update and calls vim.pack.update', function()
+    local lazypack = load_module()
+
+    lazypack.pack_update()
+
+    assert.equals(1, #__state.pack_update_calls)
+  end)
+
+  it('pack_clean prints when there are no unused plugins', function()
+    local lazypack = load_module()
+    __state.pack_get_result = {
+      { spec = { name = 'used' }, active = true },
+    }
+
+    lazypack.pack_clean()
+
+    assert.equals(1, #__state.print_calls)
+    assert.equals('No unused plugins.', __state.print_calls[1])
+    assert.equals(0, #__state.confirm_calls)
+    assert.equals(0, #__state.pack_del_calls)
+  end)
+
+  it('pack_clean deletes unused plugins when confirmed', function()
+    local lazypack = load_module()
+    __state.confirm_result = 1
+    __state.pack_get_result = {
+      { spec = { name = 'used' }, active = true },
+      { spec = { name = 'unused' }, active = false },
+      { spec = { src = gh('owner/repo') }, active = false },
+    }
+
+    lazypack.pack_clean()
+
+    assert.equals(1, #__state.confirm_calls)
+    assert.equals(1, #__state.pack_del_calls)
+    assert.same({ 'unused', gh('owner/repo') }, __state.pack_del_calls[1])
+  end)
+
+  it('pack_clean does not delete when confirmation is rejected', function()
+    local lazypack = load_module()
+    __state.confirm_result = 2
+    __state.pack_get_result = {
+      { spec = { name = 'unused' }, active = false },
+    }
+
+    lazypack.pack_clean()
+
+    assert.equals(1, #__state.confirm_calls)
+    assert.equals(0, #__state.pack_del_calls)
   end)
 end)

@@ -1,6 +1,7 @@
 local config = require('lazypack.config')
 local cmd = require('lazypack.cmd')
 local events = require('lazypack.events')
+local pack = require('lazypack.pack')
 local utils = require('lazypack.utils')
 
 local M = {}
@@ -81,5 +82,8 @@ function M.add(plugins)
     end
   end
 end
+
+M.pack_clean = pack.clean
+M.pack_update = pack.update
 
 return M
