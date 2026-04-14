@@ -21,17 +21,17 @@ vim.pack.add({ { src = 'https://github.com/danielfakunle/lazypack.nvim' } })
 
 require('lazypack').add({
   {
-    src = 'https://github.com/folke/trouble.nvim',
+    src = 'folke/trouble.nvim',
     name = 'trouble',
     dependencies = {
-      'https://github.com/nvim-tree/nvim-web-devicons',
+      'nvim-tree/nvim-web-devicons',
     },
     event = 'VeryLazy',
     config = true,
     opts = {},
   },
   {
-    src = 'https://github.com/nvim-treesitter/nvim-treesitter',
+    src = 'nvim-treesitter/nvim-treesitter',
     version = 'master',
     cmd = { 'TSInstall', 'TSUpdate' },
     config = function()
@@ -40,34 +40,36 @@ require('lazypack').add({
       })
     end,
   },
-  'https://github.com/nvim-lua/plenary.nvim',
+  'nvim-lua/plenary.nvim',
 })
 ```
 
-## Features
+## Plugin Spec
 
-Table legend:
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `src` | `string` | Plugin source (`owner/repo` or full `https` URL) passed to `vim.pack.Spec.src`. |
+| `name` | `string?` | Optional plugin name passed to `vim.pack.Spec.name`. |
+| `version` | `string?` | Optional version/tag/branch/commit passed to `vim.pack.Spec.version`. |
+| `dependencies` | `string|string[]` | A list of dependency sources (`owner/repo` or full `https` URL). Each dependency is added with `vim.pack.add` before the main plugin spec. |
+| `init` | `fun()?` | Runs in the plugin `load` callback before lazy handlers are registered. |
+| `config` | `boolean? or fun()?` | `true` calls `require(name).setup(opts)`, or you can provide a custom config function. |
+| `opts` | `table? or fun():table` | Used when `config = true`; supports table or function returning table. |
+| `event` | `string|string[]` | Lazy-load on native autocmd events and lazy-style user events (`VeryLazy`, `LazyInstall`, `LazyUpdate`, `LazyClean`, and `*Pre`). |
+| `cmd` | `string|string[]` | Lazy-load on command execution with command forwarding after `packadd`. |
+| `enabled` | `boolean? or fun():boolean` | When `false` (or function returns `false`), the plugin is skipped and not added. |
 
-- `✅`: Implemented
-- `➖`: Not implemented yet, possible future work
-- `❌`: Out of scope
+## User Events
 
-| Spec Property  | Implemented | Details                                                                           |
-| -------------- | ----------- | --------------------------------------------------------------------------------- |
-| `[1]`          | ❌          | Table specs must use `src`; positional repo string inside table is not supported. |
-| `src`          | ✅          | Passed through to `vim.pack.Spec.src`.                                            |
-| `name`         | ✅          | Passed through to `vim.pack.Spec.name`.                                           |
-| `version`      | ✅          | Passed through to `vim.pack.Spec.version`.                                        |
-| `init`         | ✅          | Runs in `load` callback.                                                          |
-| `config`       | ✅          | Supports `true` (calls `require(name).setup(opts)`) or function.                  |
-| `opts`         | ✅          | Used when `config = true`; supports table or function returning table.            |
-| `event`        | ✅          | Registers one-shot autocmd(s) to `packadd` then configure.                        |
-| `cmd`          | ✅          | Registers user command proxy/proxies to `packadd` then forward invocation.        |
-| `dependencies` | ✅          | Supports string or string[]; each dependency runs through `vim.pack.add`.         |
-| `ft`           | ❌          | Not currently handled by LazyPack.                                                |
-| `keys`         | ❌          | Not currently handled by LazyPack.                                                |
-| `build`        | ➖          | Not currently implemented.                                                        |
-| `lazy`         | ❌          | Not modeled; lazy behavior is defined by `event`/`cmd` usage.                     |
+The following user events are currently triggered by LazyPack:
+
+- `LazyInstall`: after an install (`PackChanged` with `kind = "install"`)
+- `LazyUpdate`: after an update (`PackChanged` with `kind = "update"`)
+- `LazyClean`: after a clean/delete (`PackChanged` with `kind = "delete"`)
+- `LazyInstallPre`: before an install (`PackChangedPre` with `kind = "install"`)
+- `LazyUpdatePre`: before an update (`PackChangedPre` with `kind = "update"`)
+- `LazyCleanPre`: before a clean/delete (`PackChangedPre` with `kind = "delete"`)
+- `VeryLazy`: triggered once after `VimEnter` (scheduled)
 
 ## Disclaimer
 
