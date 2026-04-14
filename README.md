@@ -13,6 +13,10 @@ close to native `vim.pack.add`.
 > than loading triggers, and LazyPack intentionally supports only a subset of
 > the spec.
 
+## Requirements
+
+- Neovim `>= 0.12`
+
 ## Usage
 
 ```lua
