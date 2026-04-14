@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.3](https://github.com/danielfakunle/lazypack.nvim/compare/lazypack-v0.0.2...lazypack-v0.0.3) (2026-04-14)
+
+
+### Features
+
+* add clean and update helpers ([e3fd37e](https://github.com/danielfakunle/lazypack.nvim/commit/e3fd37ed7d04c3af60e8782c57fc705d402db94a))
+* add common user events, add enabled field in spec, add support for owner/repo src ([e9bd2cd](https://github.com/danielfakunle/lazypack.nvim/commit/e9bd2cd95c2f9aea21dc50ae86e66dd9f3d853fc))
+
 ## [0.0.2](https://github.com/danielfakunle/lazypack.nvim/compare/lazypack-v0.0.1...lazypack-v0.0.2) (2026-04-14)
 
 
