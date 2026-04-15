@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.6](https://github.com/danielfakunle/lazypack.nvim/compare/lazypack-v0.0.5...lazypack-v0.0.6) (2026-04-15)
+
+
+### Bug Fixes
+
+* ensure plugin is loaded before config for non-lazy-loaded plugin ([1cf45de](https://github.com/danielfakunle/lazypack.nvim/commit/1cf45debbedd05c05d26e60d423d2b2e5dc3a5c4))
+
 ## [0.0.5](https://github.com/danielfakunle/lazypack.nvim/compare/lazypack-v0.0.4...lazypack-v0.0.5) (2026-04-15)
 
 
