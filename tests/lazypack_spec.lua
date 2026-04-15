@@ -204,6 +204,14 @@ describe('lazypack.add', function()
     assert.same({ gh('foo/bar') }, __state.pack_add_calls[1].specs)
   end)
 
+  it('adds a single string plugin', function()
+    local lazypack = load_module()
+    lazypack.add('foo/bar')
+
+    assert.equals(1, #__state.pack_add_calls)
+    assert.same({ gh('foo/bar') }, __state.pack_add_calls[1].specs)
+  end)
+
   it('keeps full https source for string plugins', function()
     local lazypack = load_module()
     lazypack.add({ 'https://github.com/foo/bar' })
@@ -232,6 +240,20 @@ describe('lazypack.add', function()
     assert.equals('MyCmd', call.specs[1].data.cmd)
     assert.is_nil(call.specs[1].data.build)
     assert.is_function(call.opts.load)
+  end)
+
+  it('registers a single spec plugin table', function()
+    local lazypack = load_module()
+    lazypack.add({
+      src = 'foo/bar',
+      name = 'plugin.mod',
+      version = '1.0.0',
+    })
+
+    local call = __state.pack_add_calls[1]
+    assert.equals(gh('foo/bar'), call.specs[1].src)
+    assert.equals('plugin.mod', call.specs[1].name)
+    assert.equals('1.0.0', call.specs[1].version)
   end)
 
   it('stores build in plugin data', function()

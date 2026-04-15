@@ -28,4 +28,22 @@ function M.resolve_name(name)
   return (name:gsub('%.nvim$', ''))
 end
 
+--- @param plugins any
+--- @return table
+function M.normalize_plugins_input(plugins)
+  if type(plugins) == 'string' then
+    return { plugins }
+  end
+
+  if type(plugins) ~= 'table' then
+    return {}
+  end
+
+  if plugins.src or plugins.name or plugins.version or plugins.config or plugins.opts then
+    return { plugins }
+  end
+
+  return plugins
+end
+
 return M
