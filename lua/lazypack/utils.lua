@@ -18,4 +18,14 @@ function M.normalize_source(source)
   return github_prefix .. source
 end
 
+--- @param name string?
+--- @return string?
+function M.resolve_name(name)
+  if not name then
+    return nil
+  end
+
+  return (name:gsub('%.nvim$', ''))
+end
+
 return M

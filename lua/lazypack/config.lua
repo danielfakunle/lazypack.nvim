@@ -1,4 +1,5 @@
 local M = {}
+local utils = require('lazypack.utils')
 
 --- @param p table
 local function ensure_plugin_loaded(p)
@@ -48,19 +49,25 @@ function M.run_config_once_factory(p, data)
     if data.config == true or data.opts ~= nil then
       ensure_plugin_loaded(p)
 
+      local module_name = utils.resolve_name(p.spec.name)
       local opts = data.opts
       if type(opts) == 'function' then
         opts = opts()
       end
 
       if opts ~= nil then
-        require(p.spec.name).setup(opts)
+        require(module_name).setup(opts)
       else
-        require(p.spec.name).setup()
+        require(module_name).setup()
       end
       configured = true
     elseif type(data.config) == 'function' then
-      data.config()
+      ensure_plugin_loaded(p)
+
+      local ok, err = pcall(data.config)
+      if not ok then
+        vim.notify(('Config failed for `%s`: %s'):format(p.spec.name or 'unknown plugin', err), vim.log.levels.WARN)
+      end
       configured = true
     end
   end

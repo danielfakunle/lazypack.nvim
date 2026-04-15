@@ -190,6 +190,7 @@ describe('lazypack.add', function()
     package.loaded['lazypack.pack'] = nil
     package.loaded['lazypack.utils'] = nil
     package.loaded['plugin.mod'] = nil
+    package.loaded.mason = nil
     _G.vim = real_vim
     _G.print = real_print
     _G.__state = nil
@@ -401,6 +402,65 @@ describe('lazypack.add', function()
     call.opts.load({ spec = call.specs[1] })
 
     assert.same({ alpha = 1 }, seen_opts)
+  end)
+
+  it('resolves .nvim suffix for setup module name', function()
+    local lazypack = load_module()
+    local seen_opts
+    package.loaded.mason = {
+      setup = function(opts)
+        seen_opts = opts
+      end,
+    }
+
+    lazypack.add({ {
+      src = 'williamboman/mason.nvim',
+      name = 'mason.nvim',
+      opts = { ui = true },
+    } })
+
+    local call = __state.pack_add_calls[1]
+    call.opts.load({ spec = call.specs[1] })
+
+    assert.equals('mason.nvim', __state.packadd_calls[1])
+    assert.same({ ui = true }, seen_opts)
+  end)
+
+  it('packadds plugin before running config function', function()
+    local lazypack = load_module()
+    local saw_packadd_before_config = false
+
+    lazypack.add({ {
+      src = 'foo/bar',
+      name = 'plugin.mod',
+      config = function()
+        saw_packadd_before_config = (__state.packadd_calls[1] == 'plugin.mod')
+      end,
+    } })
+
+    local call = __state.pack_add_calls[1]
+    call.opts.load({ spec = call.specs[1] })
+
+    assert.equals(true, saw_packadd_before_config)
+    assert.equals('plugin.mod', __state.packadd_calls[1])
+  end)
+
+  it('warns when config function errors', function()
+    local lazypack = load_module()
+
+    lazypack.add({ {
+      src = 'foo/bar',
+      name = 'plugin.mod',
+      config = function()
+        error('boom')
+      end,
+    } })
+
+    local call = __state.pack_add_calls[1]
+    call.opts.load({ spec = call.specs[1] })
+
+    assert.equals(1, #__state.notify_calls)
+    assert.equals(vim.log.levels.WARN, __state.notify_calls[1].level)
   end)
 
   it('calls setup when opts table is provided without config', function()
