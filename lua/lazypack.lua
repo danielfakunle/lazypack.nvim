@@ -8,7 +8,7 @@ local utils = require('lazypack.utils')
 local M = {}
 local augroup = vim.api.nvim_create_augroup('lazypack', { clear = false })
 
---- @alias AddOpts (string | PluginSpec)[]
+--- @alias AddOpts string|PluginSpec|(string | PluginSpec)[]
 
 --- @class PluginSpec
 --- @field src string
@@ -29,7 +29,9 @@ function M.add(plugins)
   events.ensure_event_bridges(augroup)
   build.ensure_build_hooks(augroup)
 
-  for _, plugin in ipairs(plugins) do
+  local list = utils.normalize_plugins_input(plugins)
+
+  for _, plugin in ipairs(list) do
     if type(plugin) == 'string' then
       vim.pack.add({ utils.normalize_source(plugin) })
     elseif type(plugin) == 'table' then
