@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.5](https://github.com/danielfakunle/lazypack.nvim/compare/lazypack-v0.0.4...lazypack-v0.0.5) (2026-04-15)
+
+
+### Features
+
+* add support for implicit config when opts is set ([bdb280d](https://github.com/danielfakunle/lazypack.nvim/commit/bdb280d80d6f539d83b908d521a941cf47c3afb8))
+
 ## [0.0.4](https://github.com/danielfakunle/lazypack.nvim/compare/lazypack-v0.0.3...lazypack-v0.0.4) (2026-04-14)
 
 
