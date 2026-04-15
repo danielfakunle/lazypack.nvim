@@ -71,7 +71,7 @@ LazyPack({
 | `dependencies` | `string \| string[]`            | A list of dependency sources (`owner/repo` or full `https` URL). Each dependency is added with `vim.pack.add` before the main plugin spec. |
 | `init`         | `fun()?`                        | Runs in the plugin `load` callback before lazy handlers are registered.                                                                    |
 | `config`       | `boolean? or fun()?`            | `true` calls `require(name).setup(opts)`, or you can provide a custom config function.                                                     |
-| `opts`         | `table? or fun():table`         | Used when `config = true`; supports table or function returning table.                                                                     |
+| `opts`         | `table? or fun():table`         | Implicitly enables setup even without `config = true`; supports table or function returning table (including `nil`, which calls `setup()`). |
 | `event`        | `string \| string[]`            | Lazy-load on native autocmd events and lazy-style user events (`VeryLazy`, `LazyInstall`, `LazyUpdate`, `LazyClean`, and `*Pre`).          |
 | `cmd`          | `string \| string[]`            | Lazy-load on command execution with command forwarding after `packadd`.                                                                    |
 | `enabled`      | `boolean? or fun():boolean`     | When `false` (or function returns `false`), the plugin is skipped and not added.                                                           |

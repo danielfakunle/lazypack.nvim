@@ -79,7 +79,7 @@ function M.add(plugins)
             cmd.register_cmd_lazy_load(p, data, run_config_once)
             events.register_event_lazy_load(p, data, run_config_once, augroup)
 
-            if not data.event and not data.cmd and data.config then
+            if not data.event and not data.cmd and (data.config or data.opts ~= nil) then
               run_config_once()
             end
           end,

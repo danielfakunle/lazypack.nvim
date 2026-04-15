@@ -35,7 +35,7 @@ function M.run_config_once_factory(p, data)
       return
     end
 
-    if data.config == true then
+    if data.config == true or data.opts ~= nil then
       local opts = data.opts
       if type(opts) == 'function' then
         opts = opts()

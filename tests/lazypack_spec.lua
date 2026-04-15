@@ -403,6 +403,96 @@ describe('lazypack.add', function()
     assert.same({ alpha = 1 }, seen_opts)
   end)
 
+  it('calls setup when opts table is provided without config', function()
+    local lazypack = load_module()
+    local seen_opts
+    package.loaded['plugin.mod'] = {
+      setup = function(opts)
+        seen_opts = opts
+      end,
+    }
+
+    lazypack.add({ {
+      src = 'foo/bar',
+      name = 'plugin.mod',
+      opts = { some = 'option' },
+    } })
+
+    local call = __state.pack_add_calls[1]
+    call.opts.load({ spec = call.specs[1] })
+
+    assert.same({ some = 'option' }, seen_opts)
+  end)
+
+  it('calls setup when opts function is provided without config', function()
+    local lazypack = load_module()
+    local seen_opts
+    package.loaded['plugin.mod'] = {
+      setup = function(opts)
+        seen_opts = opts
+      end,
+    }
+
+    lazypack.add({ {
+      src = 'foo/bar',
+      name = 'plugin.mod',
+      opts = function()
+        return { beta = true }
+      end,
+    } })
+
+    local call = __state.pack_add_calls[1]
+    call.opts.load({ spec = call.specs[1] })
+
+    assert.same({ beta = true }, seen_opts)
+  end)
+
+  it('calls setup with no args when opts function returns nil', function()
+    local lazypack = load_module()
+    local setup_calls = 0
+    local seen_opts
+    package.loaded['plugin.mod'] = {
+      setup = function(opts)
+        setup_calls = setup_calls + 1
+        seen_opts = opts
+      end,
+    }
+
+    lazypack.add({ {
+      src = 'foo/bar',
+      name = 'plugin.mod',
+      opts = function()
+        return nil
+      end,
+    } })
+
+    local call = __state.pack_add_calls[1]
+    call.opts.load({ spec = call.specs[1] })
+
+    assert.equals(1, setup_calls)
+    assert.is_nil(seen_opts)
+  end)
+
+  it('does not call setup when neither config nor opts are set', function()
+    local lazypack = load_module()
+    local setup_calls = 0
+    package.loaded['plugin.mod'] = {
+      setup = function()
+        setup_calls = setup_calls + 1
+      end,
+    }
+
+    lazypack.add({ {
+      src = 'foo/bar',
+      name = 'plugin.mod',
+    } })
+
+    local call = __state.pack_add_calls[1]
+    call.opts.load({ spec = call.specs[1] })
+
+    assert.equals(0, setup_calls)
+  end)
+
   it('calls opts function and setup once across cmd and event', function()
     local lazypack = load_module()
     local setup_calls = 0
