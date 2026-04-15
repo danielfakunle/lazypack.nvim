@@ -1,5 +1,15 @@
 local M = {}
 
+--- @param p table
+local function ensure_plugin_loaded(p)
+  local name = p and p.spec and p.spec.name or nil
+  if not name then
+    return
+  end
+
+  pcall(vim.cmd.packadd, name)
+end
+
 --- @param plugin table
 --- @return boolean
 function M.is_enabled(plugin)
@@ -36,6 +46,8 @@ function M.run_config_once_factory(p, data)
     end
 
     if data.config == true or data.opts ~= nil then
+      ensure_plugin_loaded(p)
+
       local opts = data.opts
       if type(opts) == 'function' then
         opts = opts()
