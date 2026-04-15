@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.7](https://github.com/danielfakunle/lazypack.nvim/compare/lazypack-v0.0.6...lazypack-v0.0.7) (2026-04-15)
+
+
+### Features
+
+* add support for single plugin add ([2e279ad](https://github.com/danielfakunle/lazypack.nvim/commit/2e279ad67c95be10d505169272653138fcc1f93c))
+
+
+### Bug Fixes
+
+* fix package not loading when config is a function ([ac91d4f](https://github.com/danielfakunle/lazypack.nvim/commit/ac91d4faa9f8f26657b22b82838672cf286f9d1a))
+
 ## [0.0.6](https://github.com/danielfakunle/lazypack.nvim/compare/lazypack-v0.0.5...lazypack-v0.0.6) (2026-04-15)
 
 
